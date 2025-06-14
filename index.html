@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TaskHive</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+    margin: 0; padding: 20px;
+    color: #222;
+  }
+  h1 {
+    text-align: center;
+    color: #3a3a7e;
+    margin-bottom: 10px;
+    animation: fadeIn 2s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+  }
+  #loginBox, #mainApp {
+    max-width: 600px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  }
+  label {
+    display: block;
+    margin: 15px 0 5px;
+  }
+  input[type=text], input[type=password], select, input[type=date] {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    font-size: 16px;
+  }
+  button {
+    background: #3a3a7e;
+    color: white;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    font-size: 18px;
+    cursor: pointer;
+    margin-top: 20px;
+    width: 100%;
+    transition: background 0.3s ease;
+  }
+  button:hover {
+    background: #2a2a57;
+  }
+  #taskList {
+    margin-top: 25px;
+    max-height: 300px;
+    overflow-y: auto;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+  }
+  .taskItem {
+    background: #f0f4ff;
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    border-radius: 6px;
+    box-shadow: 1px 1px 5px rgba(58, 58, 126, 0.15);
+  }
+  .taskDate {
+    font-weight: bold;
+    color: #555;
+  }
+  #historyView {
+    display: none;
+  }
+  #backBtn {
+    background: #8888cc;
+    margin-bottom: 15px;
+    width: auto;
+  }
+  .errorMsg {
+    color: #c0392b;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+  .infoMsg {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <h1>TaskHive Login</h1>
+  <label for="username">Name:</label>
+  <select id="username">
+    <option value="" selected disabled>Select your name</option>
+    <option value="farmeen">Farmeen Shaikh (Sister)</option>
+    <option value="aisha">Aisha Aatif (Mom)</option>
+    <option value="aatif">Aatif Saleem (Dad)</option>
+    <option value="admin">Admin (You)</option>
+  </select>
+
+  <label for="password">Password:</label>
+  <input type="password" id="password" placeholder="Enter password" />
+
+  <button id="loginBtn">Login</button>
+  <div class="errorMsg" id="loginError"></div>
+</div>
+
+<div id="mainApp" style="display:none;">
+  <h1>TaskHive</h1>
+  <div id="welcomeMsg"></div>
+
+  <!-- Add task only visible to sister -->
+  <div id="addTaskSection" style="margin-top: 20px;">
+    <label for="taskDate">Select Date:</label>
+    <input type="date" id="taskDate" />
+
+    <label for="taskMsg">Add Task / Homework:</label>
+    <input type="text" id="taskMsg" placeholder="Enter homework or task details" />
+
+    <button id="addTaskBtn">Add Task</button>
+    <div class="errorMsg" id="taskError"></div>
+  </div>
+
+  <!-- Tasks list -->
+  <div id="taskList">
+  </div>
+
+  <button id="historyBtn" style="margin-top: 20px;">View History</button>
+
+  <div id="historyView">
+    <button id="backBtn">Back</button>
+    <h2>Task History</h2>
+    <label for="filterDate">Filter by Date:</label>
+    <input type="date" id="filterDate" />
+    <button id="filterBtn" style="margin-top: 10px; width: auto;">Filter</button>
+    <div id="filteredTasks" style="margin-top: 15px;"></div>
+  </div>
+</div>
+
+<script>
+  const users = {
+    farmeen: "Dubai@786",
+    aisha: "Dubai@786",
+    aatif: "Dubai@786",
+    admin: "admin"
+  };
+
+  let currentUser = null;
+  let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+  const loginBox = document.getElementById("loginBox");
+  const mainApp = document.getElementById("mainApp");
+  const usernameSelect = document.getElementById("username");
+  const passwordInput = document.getElementById("password");
+  const loginBtn = document.getElementById("loginBtn");
+  const loginError = document.getElementById("loginError");
+  const welcomeMsg = document.getElementById("welcomeMsg");
+  const addTaskSection = document.getElementById("addTaskSection");
+  const taskDateInput = document.getElementById("taskDate");
+  const taskMsgInput = document.getElementById("taskMsg");
+  const addTaskBtn = document.getElementById("addTaskBtn");
+  const taskError = document.getElementById("taskError");
+  const taskListDiv = document.getElementById("taskList");
+  const historyBtn = document.getElementById("historyBtn");
+  const historyView = document.getElementById("historyView");
+  const backBtn = document.getElementById("backBtn");
+  const filterDateInput = document.getElementById("filterDate");
+  const filterBtn = document.getElementById("filterBtn");
+  const filteredTasksDiv = document.getElementById("filteredTasks");
+
+  loginBtn.onclick = () => {
+    const username = usernameSelect.value;
+    const password = passwordInput.value.trim();
+    if (!username) {
+      loginError.textContent = "Please select your name.";
+      return;
+    }
+    if (password !== users[username]) {
+      loginError.textContent = "Incorrect password.";
+      return;
+    }
+    loginError.textContent = "";
+    currentUser = username;
+    loginBox.style.display = "none";
+    mainApp.style.display = "block";
+    welcomeMsg.textContent = `Welcome, ${username.charAt(0).toUpperCase() + username.slice(1)}!`;
+    setupView();
+    renderTasks();
+  };
+
+  function setupView() {
+    // Only sister can add tasks
+    if (currentUser === "farmeen") {
+      addTaskSection.style.display = "block";
+    } else {
+      addTaskSection.style.display = "none";
+    }
+    historyView.style.display = "none";
+    taskListDiv.style.display = "block";
+    historyBtn.style.display = "inline-block";
+  }
+
+  function renderTasks() {
+    taskListDiv.innerHTML = "";
+    if (tasks.length === 0) {
+      taskListDiv.innerHTML = "<p>No tasks added yet.</p>";
+      return;
+    }
+    tasks.forEach((t, i) => {
+      const div = document.createElement("div");
+      div.className = "taskItem";
+      div.innerHTML = `<div class="taskDate">${t.date}</div><div>${t.message}</div>`;
+      taskListDiv.appendChild(div);
+    });
+  }
+
+  addTaskBtn.onclick = () => {
+    const date = taskDateInput.value;
+    const message = taskMsgInput.value.trim();
+    taskError.textContent = "";
+    if (!date) {
+      taskError.textContent = "Please select a date.";
+      return;
+    }
+    if (!message) {
+      taskError.textContent = "Please enter the task details.";
+      return;
+    }
+    tasks.push({ date, message });
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+    taskDateInput.value = "";
+    taskMsgInput.value = "";
+    renderTasks();
+  };
+
+  historyBtn.onclick = () => {
+    taskListDiv.style.display = "none";
+    historyBtn.style.display = "none";
+    historyView.style.display = "block";
+    filteredTasksDiv.innerHTML = "";
+    filterDateInput.value = "";
+  };
+
+  backBtn.onclick = () => {
+    historyView.style.display = "none";
+    taskListDiv.style.display = "block";
+    historyBtn.style.display = "inline-block";
+  };
+
+  filterBtn.onclick = () => {
+    const filterDate = filterDateInput.value;
+    filteredTasksDiv.innerHTML = "";
+    if (!filterDate) {
+      filteredTasksDiv.innerHTML = "<p class='errorMsg'>Please select a date to filter.</p>";
+      return;
+    }
+    const filtered = tasks.filter(t => t.date === filterDate);
+    if (filtered.length === 0) {
+      filteredTasksDiv.innerHTML = "<p>No tasks found for this date.</p>";
+      return;
+    }
+    filtered.forEach(t => {
+      const div = document.createElement("div");
+      div.className = "taskItem";
+      div.innerHTML = `<div class="taskDate">${t.date}</div><div>${t.message}</div>`;
+      filteredTasksDiv.appendChild(div);
+    });
+  };
+</script>
+
+</body>
+</html>
